@@ -9,12 +9,13 @@ myHeaders.append("Access-Control-Allow-Headers", "*");
 window.onload =
     function getOrderList() {
         const url = "https://localhost:7163/api/OrderList/GetOrderList";
-
         let status = 0;
+        var respClone;
 
         fetch(url, myHeaders)
             .then((response) => {
                 status = response.status;
+                respClone = response.clone();
                 return response.json();
             })
             .then((data = response) => {
@@ -30,240 +31,225 @@ window.onload =
                     blurProductNamesOnEnter();
                     addProductButtonOnEnter();
                 }
-            })
-            .catch((err) => {
-                console.log(err);
-                errorMsg.innerHTML = err;
-            })
+            },
+                (rejectionReason) => {
+                    respClone.text()
+                        .then((bodyText) => {
+                            showMessage(bodyText);
+                        });
+                });
     }
 
 function addGroup() {
     let inputGroupName = document.getElementById('input-group-name');
     let input = inputGroupName.value.trim();
 
-    if ((input !== "") && (input !== null) && (input !== undefined)) {
-        const url = `https://localhost:7163/api/OrderList/AddGroup?name=${input}`;
+    const url = `https://localhost:7163/api/OrderList/AddGroup?name=${input}`;
+    let myOptions = {
+        method: "PUT",
+        headers: myHeaders
+    };
+    let status = 0;
+    var respClone;
 
-        let myOptions = {
-            method: "PUT",
-            headers: myHeaders
-        };
+    fetch(url, myOptions)
+        .then((response) => {
+            status = response.status;
+            respClone = response.clone();
+            return response.json();
+        })
+        .then((group = response) => {
+            if (status == 200) {
+                groupsContainer.innerHTML += createHtmlNewGroup(group);
 
-        let status = 0;
+                inputGroupName.value = "";
+                inputGroupName.focus();
+            }
 
-        fetch(url, myOptions)
-            .then((response) => {
-                status = response.status;
-                return response.json();
-            })
-            .then((group = response) => {
-                if (status == 200) {
-                    console.log(group.products);
-                    groupsContainer.innerHTML += createHtmlNewGroup(group);
-
-                    inputGroupName.value = "";
-                    inputGroupName.focus();
-                }
-
-                blurGroupNamesOnEnter();
-                addProductButtonOnEnter();
-            })
-            .catch((err) => {
-                console.log(err);
-                errorMsg.innerHTML = err;
-            })
-    }
-    else {
-        showMessage("Nome do grupo não pode ser vazio");
-    }
-
+            blurGroupNamesOnEnter();
+            addProductButtonOnEnter();
+        },
+            (rejectionReason) => {
+                respClone.text()
+                    .then((bodyText) => {
+                        showMessage(bodyText);
+                    });
+            });
 }
 
 function addProduct(groupName) {
     let inputProductName = document.getElementById(`input-product-${groupName}`);
     let input = inputProductName.value.trim();
 
-    if ((input !== "") && (input !== null) && (input !== undefined)) {
-        const url = `https://localhost:7163/api/OrderList/AddProduct?productName=${input}&groupName=${groupName}`;
+    const url = `https://localhost:7163/api/OrderList/AddProduct?productName=${input}&groupName=${groupName}`;
+    let myOptions = {
+        method: "POST",
+        headers: myHeaders
+    };
+    let status = 0;
+    var respClone;
 
+    fetch(url, myOptions)
+        .then((response) => {
+            status = response.status;
+            respClone = response.clone();
+            return response.json();
+        })
+        .then((product = response) => {
+            if (status === 200) {
+                document.getElementById(`area-products-${groupName}`).innerHTML +=
+                    createHtmlNewProduct(groupName, product.name);
+
+                inputProductName.value = "";
+                inputProductName.focus();
+            }
+
+            blurProductNamesOnEnter();
+        },
+            (rejectionReason) => {
+                respClone.text()
+                    .then((bodyText) => {
+                        showMessage(bodyText);
+                    });
+            });
+}
+
+function editGroup(groupName) {
+    let newDescription = document.getElementById(`span-group-name-${groupName}`).innerHTML.trim();
+
+    if (newDescription !== groupName) {
+        const url = `https://localhost:7163/api/OrderList/EditGroup?group=${groupName}&description=${newDescription}`;
         let myOptions = {
-            method: "POST",
+            method: "PATCH",
             headers: myHeaders
         };
-
         let status = 0;
+        var respClone;
 
         fetch(url, myOptions)
             .then((response) => {
                 status = response.status;
+                respClone = response.clone();
                 return response.json();
             })
-            .then((product = response) => {
+            .then((group = response) => {
                 if (status === 200) {
-                    document.getElementById(`area-products-${groupName}`).innerHTML +=
-                        createHtmlNewProduct(groupName, product.name);
+                    //pega elemento do grupo atual
+                    let divGroup = document.getElementById(`group-${groupName}`);
+                    //cria a string com os novos dados
+                    let divGroupEdited = createHtmlNewGroup(group);
 
-                    inputProductName.value = "";
-                    inputProductName.focus();
+                    //converte a string para DOM, pegando apenas o elemento div
+                    let parser = new DOMParser();
+                    let newNode = parser.parseFromString(divGroupEdited, "text/html").getElementsByTagName("div")[0];
+
+                    //substitui o node antigo pelo novo na div pai
+                    groupsContainer.replaceChild(newNode, divGroup);
                 }
-
+                else {
+                    document.getElementById(`span-group-name-${groupName}`).innerText = groupName;
+                }
+                blurGroupNamesOnEnter();
                 blurProductNamesOnEnter();
-            })
-            .catch((err) => {
-                console.log(err);
-                errorMsg.innerHTML = err;
-            })
-    }
-    else {
-        showMessage("Nome do produto não pode ser vazio");
-    }
-}
-
-function editGroup(groupName) {
-    console.log(`Editar grupo ${groupName}`);
-    let newDescription = document.getElementById(`span-group-name-${groupName}`).innerHTML.trim();
-    console.log(`Nova descrição: ${newDescription}`);
-
-    if ((newDescription !== "") && (newDescription !== null) && (newDescription !== undefined)) {
-        if (newDescription.toLowerCase() !== groupName.toLowerCase()) {
-            const url = `https://localhost:7163/api/OrderList/EditGroup?group=${groupName}&description=${newDescription}`;
-
-            let myOptions = {
-                method: "PATCH",
-                headers: myHeaders
-            };
-
-            let status = 0;
-
-            fetch(url, myOptions)
-                .then((response) => {
-                    status = response.status;
-                    return response.json();
-                })
-                .then((group = response) => {
-                    if (status === 200) {
-                        //pega elemento do grupo atual
-                        let divGroup = document.getElementById(`group-${groupName}`);
-                        //cria a string com os novos dados
-                        let divGroupEdited = createHtmlNewGroup(group);
-
-                        //converte a string para DOM, pegando apenas o elemento div
-                        let parser = new DOMParser();
-                        let newNode = parser.parseFromString(divGroupEdited, "text/html").getElementsByTagName("div")[0];
-                    
-                        //substitui o node antigo pelo novo na div pai
-                        groupsContainer.replaceChild(newNode, divGroup);
-                    }
-                    else {
-                        document.getElementById(`span-group-name-${groupName}`).innerText = groupName;
-                    }
-                    blurGroupNamesOnEnter();
-                    addProductButtonOnEnter();
-                })
-                .catch((err) => {
-                    console.log(err);
-                })
-        }
-        else {
-            document.getElementById(`span-group-name-${groupName}`).innerText = groupName;
-        }
-    }
-    else {
-        showMessage("Nome do grupo não pode ser vazio");
+                addProductButtonOnEnter();
+            },
+                (rejectionReason) => {
+                    respClone.text()
+                        .then((bodyText) => {
+                            showMessage(bodyText);
+                            document.getElementById(`span-group-name-${groupName}`).innerText = groupName;
+                        });
+                });
     }
 }
 
 function editProduct(groupName, productName) {
-    console.log(`Editar produto ${productName} do grupo ${groupName}`);
     let newDescription = document.getElementById(`product-name-${groupName}-${productName}`).innerHTML.trim();
-    console.log(`Nova descrição: ${newDescription}`);
 
-    if ((newDescription !== "") && (newDescription !== null) && (newDescription !== undefined)) {
-        if (newDescription.toLowerCase() !== productName.toLowerCase()) {
-            const url = `https://localhost:7163/api/OrderList/EditProduct?group=${groupName}&description=${newDescription}`;
+    if (newDescription !== productName) {
+        const url = `https://localhost:7163/api/OrderList/EditProduct?group=${groupName}&Name=${productName}&description=${newDescription}`;
+        let myOptions = {
+            method: "PATCH",
+            headers: myHeaders
+        };
+        let status = 0;
+        var respClone;
 
-            let myOptions = {
-                method: "PATCH",
-                headers: myHeaders,
-                body: JSON.stringify({ name: productName })
-            };
+        fetch(url, myOptions)
+            .then((response) => {
+                status = response.status;
+                respClone = response.clone();
+                return response.json();
+            })
+            .then((product = response) => {
+                if (status === 200) {
+                    //pega elemento de linha atual do produto
+                    let liProduct = document.getElementById(`group-${groupName}-product-${productName}`);
+                    //cria a string com os novos dados
+                    let liProductEdited = createHtmlNewProduct(groupName, product.name, product.isChecked);
 
-            let status = 0;
-            fetch(url, myOptions)
-                .then((response) => {
-                    status = response.status;
-                    return response.json();
-                })
-                .then((product = response) => {
-                    if (status === 200) {
-                        //pega elemento de linha atual do produto
-                        let liProduct = document.getElementById(`group-${groupName}-product-${productName}`);
-                        //cria a string com os novos dados
-                        let liProductEdited = createHtmlNewProduct(groupName, product.name, product.isChecked);
+                    //converte a string para DOM, pegando apenas o elemento li
+                    let parser = new DOMParser();
+                    let newNode = parser.parseFromString(liProductEdited, "text/html").getElementsByTagName("li")[0];
 
-                        //converte a string para DOM, pegando apenas o elemento li
-                        let parser = new DOMParser();
-                        let newNode = parser.parseFromString(liProductEdited, "text/html").getElementsByTagName("li")[0];
+                    //pega div em que está a linha do produto e substitui o node antigo pelo novo
+                    let divAreaProducts = document.getElementById(`area-products-${groupName}`);
+                    divAreaProducts.replaceChild(newNode, liProduct);
+                }
+                else {
+                    document.getElementById(`product-name-${groupName}-${productName}`).innerText = productName;
+                }
 
-                        console.log(newNode);
-
-                        //pega div em que está a linha do produto e substitui o node antigo pelo novo
-                        let divAreaProducts = document.getElementById(`area-products-${groupName}`);
-                        divAreaProducts.replaceChild(newNode, liProduct);
-                    }
-                    else {
-                        document.getElementById(`product-name-${groupName}-${productName}`).innerText = productName;
-                    }
-
-                    blurProductNamesOnEnter();
-                })
-                .catch((err) => {
-                    console.log(err);
-                })
-        }
-        else {
-            document.getElementById(`product-name-${groupName}-${productName}`).innerText = productName;
-        }
+                blurProductNamesOnEnter();
+            },
+                (rejectionReason) => {
+                    respClone.text()
+                        .then((bodyText) => {
+                            showMessage(bodyText);
+                            document.getElementById(`product-name-${groupName}-${productName}`).innerText = productName;
+                        });
+                });
     }
     else {
-        showMessage("Nome do produto não pode ser vazio");
+        document.getElementById(`product-name-${groupName}-${productName}`).innerText = productName;
     }
-
 }
 
 function removeProduct(groupName, productName) {
     let result = confirm("Deseja excluir esse produto?");
 
     if (result) {
-        console.log(`Remover produto ${productName} do grupo ${groupName}`);
-        const url = `https://localhost:7163/api/OrderList/RemoveProduct?group=${groupName}`;
-
+        const url = `https://localhost:7163/api/OrderList/RemoveProduct?group=${groupName}&Name=${productName}`;
         let myOptions = {
             method: "DELETE",
-            headers: myHeaders,
-            body: JSON.stringify({ name: productName })
+            headers: myHeaders
         };
+        let status = 0;
+        var respClone;
 
         fetch(url, myOptions)
             .then((response) => {
+                status = response.status;
+                respClone = response.clone();
                 return response.text();
             })
             .then((data = response) => {
-                console.log(data);
-
-                if (data == "Produto removido com sucesso.") {
+                if (status === 200) {
                     var liProduct = document.getElementById(`group-${groupName}-product-${productName}`);
                     liProduct.remove();
                 }
-                else {
-                    console.log(data);
+                else{
+                    showMessage(data);
                 }
 
                 blurProductNamesOnEnter();
-            })
-            .catch((err) => {
-                console.log(err);
-            })
+            },
+                (rejectionReason) => {
+                    respClone.text()
+                        .then((bodyText) => {
+                            showMessage(bodyText);
+                        });
+                });
     }
 }
 
@@ -271,67 +257,78 @@ function removeGroup(groupName) {
     let result = confirm("Deseja excluir esse grupo?");
 
     if (result) {
-        const url = `https://localhost:7163/api/OrderList/RemoveGroup`;
-
+        const url = `https://localhost:7163/api/OrderList/RemoveGroup?Description=${groupName}`;
         let myOptions = {
             method: "DELETE",
-            headers: myHeaders,
-            body: JSON.stringify({ description: groupName })
+            headers: myHeaders
         };
+        let status = 0;
+        var respClone;
 
         fetch(url, myOptions)
             .then((response) => {
+                status = response.status;
+                respClone = response.clone();
                 return response.text();
             })
             .then((data = response) => {
-                console.log(data);
-
-                if (data == "Grupo removido com sucesso.") {
+                if (status === 200) {
                     var divGroup = document.getElementById(`group-${groupName}`);
                     divGroup.remove();
                 }
                 else {
-                    console.log(data);
+                    showMessage(data);
                 }
 
                 blurGroupNamesOnEnter();
-            })
-            .catch((err) => {
-                console.log(err);
-            })
+            },
+                (rejectionReason) => {
+                    respClone.text()
+                        .then((bodyText) => {
+                            showMessage(bodyText);
+                        });
+                });
     }
 }
 
 function updateChecked(groupName, productName) {
     let checkbox = document.getElementById(`checkbox-${groupName}-${productName}`);
-    let status = checkbox.hasAttribute("checked");
+    let statusCheckbox = checkbox.hasAttribute("checked");
 
-    if (!status) {
-        checkbox.setAttribute("checked", !status);
-    }
-    if (status) {
-        checkbox.removeAttribute("checked");
-    }
-
-    const url = `https://localhost:7163/api/OrderList/UpdateChecked?group=${groupName}&isChecked=${!status}`;
-
+    const url = `https://localhost:7163/api/OrderList/UpdateChecked?group=${groupName}&Name=${productName}&isChecked=${!statusCheckbox}`;
     let myOptions = {
         method: "PATCH",
-        headers: myHeaders,
-        body: JSON.stringify({ name: productName })
+        headers: myHeaders
     };
+    let status = 0;
+    var respClone;
 
     fetch(url, myOptions)
         .then((response) => {
+            status = response.status;
+            respClone = response.clone();
             return response.json();
         })
-        .then((product = response) => {
-            console.log(product);
-        })
-        .catch((err) => {
-            console.log(err);
-            errorMsg.innerHTML = err;
-        })
+        .then((data = response) => {
+            if (status === 200) {
+                console.log(data);
+                if (!statusCheckbox) {
+                    checkbox.setAttribute("checked", !statusCheckbox);
+                }
+                if (statusCheckbox) {
+                    checkbox.removeAttribute("checked");
+                }
+            }
+            else {
+                showMessage(data);
+            }
+        },
+            (rejectionReason) => {
+                respClone.text()
+                    .then((bodyText) => {
+                        showMessage(bodyText);
+                    });
+            });
 }
 
 function createHtmlNewGroup(group) {
@@ -388,6 +385,10 @@ function createHtmlNewProduct(groupName, productName, isChecked) {
 
     return newProduct;
 }
+
+//criar função unica para todos os eventos?
+function eventsListener() { }
+
 //adiciona evento ao apertar enter para editar grupo
 function blurGroupNamesOnEnter() {
     let groupNames = document.getElementsByClassName('group-name-editable');
